@@ -20,10 +20,15 @@ async function run(): Promise<void> {
 
   if (process.env.DEBUG_OCCURRENCES) {
     const now = new Date();
-    console.log(`[debug] now=${now.toISOString()} todayLA=${laDay(now)} tomorrowLA=${laDay(new Date(now.getTime() + 86400000))}`);
-    for (const e of events) {
-      const soon = e.upcomingOccurrences.slice(0, 2).map((iso) => `${iso} (LA:${laDay(new Date(iso))})`);
-      console.log(`[debug] "${e.title}" → ${soon.join(', ') || '(none)'}`);
+    console.log(`[debug] nowISO=${now.toISOString()} todayLA=${laDay(now)} tomorrowLA=${laDay(new Date(now.getTime() + 86400000))}`);
+    const future = events
+      .flatMap((e) => e.upcomingOccurrences.map((iso) => ({ iso, title: e.title })))
+      .filter((o) => new Date(o.iso).getTime() >= now.getTime())
+      .sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime())
+      .slice(0, 20);
+    console.log(`[debug] ${future.length} future occurrence(s); soonest 20:`);
+    for (const o of future) {
+      console.log(`[debug-future] dayLA=${laDay(new Date(o.iso))} iso=${o.iso} title=${o.title}`);
     }
   }
 
