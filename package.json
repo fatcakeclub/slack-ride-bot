@@ -1,0 +1,19 @@
+{
+  "name": "slack-ride-bot",
+  "version": "1.0.0",
+  "description": "Posts a Fat Cake Club ride call to Slack the day before each ride, around noon PT.",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@slack/webhook": "^7.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  }
+}

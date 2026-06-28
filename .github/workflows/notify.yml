@@ -1,0 +1,31 @@
+name: Strava Ride Call Notifications
+
+on:
+  schedule:
+    # Daily, at both candidate "noon PT" hours. The script's noon-hour guard
+    # ensures exactly one run proceeds year-round (DST-safe).
+    - cron: '0 19 * * *'   # noon PDT (summer)
+    - cron: '0 20 * * *'   # noon PST (winter)
+  workflow_dispatch:        # Manual test runs
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm run build
+      - name: Run notifier
+        env:
+          STRAVA_CLUB_ID: ${{ vars.STRAVA_CLUB_ID }}
+          STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+          STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+          STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_CHANNEL: ${{ vars.SLACK_CHANNEL }}
+          # On manual dispatch, bypass the noon guard so you can test any time:
+          SKIP_NOON_GUARD: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+        run: npm start
