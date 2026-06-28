@@ -13,8 +13,11 @@ const activityEmoji: Record<string, string> = {
   VirtualRide: '🖥️',
 };
 
-export function formatRideMessage(event: GroupEvent): IncomingWebhookSendArguments {
-  const date = new Date(event.upcomingOccurrence);
+export function formatRideMessage(
+  event: GroupEvent,
+  occurrenceIso: string
+): IncomingWebhookSendArguments {
+  const date = new Date(occurrenceIso);
 
   const dateStr = date.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -87,9 +90,9 @@ export function formatRideMessage(event: GroupEvent): IncomingWebhookSendArgumen
   };
 }
 
-export async function postToSlack(event: GroupEvent): Promise<void> {
-  await webhook.send(formatRideMessage(event));
-  console.log(`✅ Posted ride call: ${event.title} (${event.upcomingOccurrence})`);
+export async function postToSlack(event: GroupEvent, occurrenceIso: string): Promise<void> {
+  await webhook.send(formatRideMessage(event, occurrenceIso));
+  console.log(`✅ Posted ride call: ${event.title} (${occurrenceIso})`);
 }
 
 export async function postFailureNotice(message: string): Promise<void> {

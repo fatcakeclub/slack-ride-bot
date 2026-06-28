@@ -1,5 +1,5 @@
 import { config } from './config';
-import { isTomorrowLA } from './filter';
+import { occurrenceTomorrowLA } from './filter';
 import { withRetry } from './retry';
 import { postFailureNotice, postToSlack } from './slack';
 import { fetchUpcomingEvents, getAccessToken } from './strava';
@@ -15,13 +15,16 @@ async function run(): Promise<void> {
 
   const accessToken = await getAccessToken();
   const events = await withRetry(() => fetchUpcomingEvents(accessToken));
-  console.log(`Fetched ${events.length} club events`);
+  const withOccurrences = events.filter((e) => e.upcomingOccurrences.length > 0).length;
+  console.log(`Fetched ${events.length} club events (${withOccurrences} with upcoming occurrences)`);
 
-  const ridesTomorrow = events.filter((e) => isTomorrowLA(e));
+  const ridesTomorrow = events
+    .map((event) => ({ event, occurrence: occurrenceTomorrowLA(event) }))
+    .filter((r): r is { event: typeof r.event; occurrence: string } => r.occurrence !== null);
   console.log(`${ridesTomorrow.length} ride(s) happening tomorrow`);
 
-  for (const event of ridesTomorrow) {
-    await withRetry(() => postToSlack(event));
+  for (const { event, occurrence } of ridesTomorrow) {
+    await withRetry(() => postToSlack(event, occurrence));
     await new Promise((r) => setTimeout(r, 500)); // gentle on Slack rate limits
   }
 
