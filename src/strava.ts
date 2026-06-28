@@ -48,5 +48,17 @@ export async function fetchUpcomingEvents(accessToken: string): Promise<GroupEve
     throw new Error(`Strava API error: ${res.status} ${await res.text()}`);
   }
   const raw = (await res.json()) as StravaGroupEventRaw[];
+
+  if (process.env.DEBUG_RAW && raw.length > 0) {
+    console.log(`[raw] keys of first event: ${Object.keys(raw[0]).join(', ')}`);
+    console.log(`[raw] first event full: ${JSON.stringify(raw[0])}`);
+    for (const e of raw as any[]) {
+      const occ = e.upcoming_occurrences ?? [];
+      console.log(
+        `[raw-summary] title=${e.title} | women_only=${e.women_only} | recurrence_rule=${JSON.stringify(e.recurrence_rule)} | nOcc=${occ.length} | last=${occ[occ.length - 1]}`
+      );
+    }
+  }
+
   return raw.map(toGroupEvent);
 }
