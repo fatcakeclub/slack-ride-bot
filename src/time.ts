@@ -20,3 +20,13 @@ export function laHour(now = new Date()): number {
 export function isNoonHourLA(now = new Date()): boolean {
   return laHour(now) === 12;
 }
+
+/** YYYY-MM-DD for a date, evaluated in LA time. */
+export function laDay(d: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}

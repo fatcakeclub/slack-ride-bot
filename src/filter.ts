@@ -1,15 +1,5 @@
-import { TZ } from './time';
+import { laDay } from './time';
 import type { GroupEvent } from './types';
-
-/** YYYY-MM-DD for a date, evaluated in LA time. */
-function laDay(d: Date): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(d);
-}
 
 /**
  * If any of the event's upcoming occurrences falls on tomorrow's LA calendar

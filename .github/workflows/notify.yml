@@ -28,4 +28,6 @@ jobs:
           SLACK_CHANNEL: ${{ vars.SLACK_CHANNEL }}
           # On manual dispatch, bypass the noon guard so you can test any time:
           SKIP_NOON_GUARD: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+          # Verbose occurrence logging on manual runs (diagnostics only):
+          DEBUG_OCCURRENCES: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
         run: npm start
