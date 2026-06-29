@@ -4,7 +4,10 @@ import { config } from './config';
 import { TZ } from './time';
 import type { GroupEvent } from './types';
 
-const webhook = new IncomingWebhook(config.slack.webhookUrl);
+const general = new IncomingWebhook(config.slack.webhookUrl); // #ride-calls-only
+const ftwnb = config.slack.ftwnbWebhookUrl
+  ? new IncomingWebhook(config.slack.ftwnbWebhookUrl)
+  : null; // #ftwnb
 
 const activityEmoji: Record<string, string> = {
   Ride: '🚴',
@@ -12,6 +15,20 @@ const activityEmoji: Record<string, string> = {
   MountainBikeRide: '⛰️',
   VirtualRide: '🖥️',
 };
+
+/**
+ * Which channels a ride call should post to. Women-only rides go to #ftwnb;
+ * everything else to #ride-calls-only. If the #ftwnb webhook is not configured,
+ * women-only rides fall back to the general channel so nothing is dropped.
+ */
+function destinationsFor(event: GroupEvent): { name: string; hook: IncomingWebhook }[] {
+  if (event.womenOnly) {
+    return ftwnb
+      ? [{ name: '#ftwnb', hook: ftwnb }]
+      : [{ name: '#ride-calls-only (ftwnb fallback)', hook: general }];
+  }
+  return [{ name: '#ride-calls-only', hook: general }];
+}
 
 export function formatRideMessage(
   event: GroupEvent,
@@ -85,19 +102,19 @@ export function formatRideMessage(
   return {
     text: `${emoji} Ride call — ${event.title} tomorrow (${dateStr})`,
     blocks,
-    // Honored by legacy webhooks; modern channel-bound webhooks ignore it.
-    ...(config.slack.channel ? { channel: config.slack.channel } : {}),
   };
 }
 
 export async function postToSlack(event: GroupEvent, occurrenceIso: string): Promise<void> {
-  await webhook.send(formatRideMessage(event, occurrenceIso));
-  console.log(`✅ Posted ride call: ${event.title} (${occurrenceIso})`);
+  const payload = formatRideMessage(event, occurrenceIso);
+  const targets = destinationsFor(event);
+  for (const { hook } of targets) {
+    await hook.send(payload);
+  }
+  console.log(`✅ Posted "${event.title}" → ${targets.map((t) => t.name).join(', ')}`);
 }
 
+/** Operational failure notice — always goes to the general channel only. */
 export async function postFailureNotice(message: string): Promise<void> {
-  await webhook.send({
-    text: `⚠️ Strava ride-call job failed: \`${message}\``,
-    ...(config.slack.channel ? { channel: config.slack.channel } : {}),
-  });
+  await general.send({ text: `⚠️ Strava ride-call job failed: \`${message}\`` });
 }

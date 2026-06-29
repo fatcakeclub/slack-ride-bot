@@ -1,58 +1,52 @@
 /**
- * Raw shape returned by Strava's `/clubs/{id}/group_events` endpoint.
- * Snake_case because that is the wire format — do not use this outside strava.ts.
+ * Raw shape returned by Strava's group-event endpoints. Snake_case because it
+ * is the wire format — do not use this outside strava.ts.
  *
- * Strava returns the next occurrences as a plural array (`upcoming_occurrences`);
- * the singular field is kept as a defensive fallback in case the shape varies.
+ * `id` is a string here on purpose: new-format event IDs are 19 digits and
+ * exceed JS's safe integer range, so we preserve them as strings (see
+ * parseStravaJson in strava.ts).
  */
 export interface StravaGroupEventRaw {
-  id: number;
+  id: string;
   title: string;
   description?: string;
   activity_type: string; // e.g. "Ride"
-  upcoming_occurrences?: string[]; // ISO 8601 datetimes of the next occurrences
-  upcoming_occurrence?: string; // fallback (singular)
+  upcoming_occurrences?: string[]; // ISO 8601 datetimes
+  women_only?: boolean;
   address?: string;
   lat?: number;
   lng?: number;
-  route_ids?: number[];
   club_id: number;
 }
 
 /** CamelCase domain model used throughout the app. */
 export interface GroupEvent {
-  id: number;
+  id: string;
   title: string;
   description?: string;
   activityType: string;
   upcomingOccurrences: string[]; // ISO 8601, soonest first
+  womenOnly: boolean;
   address?: string;
   lat?: number;
   lng?: number;
-  routeIds?: number[];
-  clubId: number;
 }
 
 /** Map Strava's raw wire format to our camelCase domain model. */
 export function toGroupEvent(raw: StravaGroupEventRaw): GroupEvent {
-  const occurrences = (raw.upcoming_occurrences ?? []).slice();
-  if (raw.upcoming_occurrence) occurrences.push(raw.upcoming_occurrence);
-
-  // Keep only valid datetimes, sorted soonest-first.
-  const upcomingOccurrences = occurrences
+  const upcomingOccurrences = (raw.upcoming_occurrences ?? [])
     .filter((iso) => iso && !Number.isNaN(new Date(iso).getTime()))
     .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
 
   return {
-    id: raw.id,
-    title: raw.title,
+    id: String(raw.id),
+    title: (raw.title ?? '').trim(),
     description: raw.description,
     activityType: raw.activity_type,
     upcomingOccurrences,
+    womenOnly: Boolean(raw.women_only),
     address: raw.address,
     lat: raw.lat,
     lng: raw.lng,
-    routeIds: raw.route_ids,
-    clubId: raw.club_id,
   };
 }

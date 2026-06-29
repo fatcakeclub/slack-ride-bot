@@ -14,11 +14,10 @@ export const config = {
     refreshToken: required('STRAVA_REFRESH_TOKEN'),
   },
   slack: {
-    webhookUrl: required('SLACK_WEBHOOK_URL'),
-    // Optional override. Modern incoming webhooks are bound to a channel at
-    // creation and ignore this; kept configurable for legacy webhooks and for
-    // surfacing the intended channel in logs.
-    channel: process.env.SLACK_CHANNEL || undefined,
+    webhookUrl: required('SLACK_WEBHOOK_URL'), // #ride-calls-only
+    // Optional second webhook bound to #ftwnb. Women-only rides route here.
+    // If unset, women-only rides fall back to the general channel.
+    ftwnbWebhookUrl: process.env.SLACK_WEBHOOK_URL_FTWNB || undefined,
   },
   /** Bypass the noon-hour guard for dev / manual runs. */
   skipNoonGuard: Boolean(process.env.SKIP_NOON_GUARD),

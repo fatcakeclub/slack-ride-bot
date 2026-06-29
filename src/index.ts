@@ -2,8 +2,8 @@ import { config } from './config';
 import { occurrenceTomorrowLA } from './filter';
 import { withRetry } from './retry';
 import { postFailureNotice, postToSlack } from './slack';
-import { fetchUpcomingEvents, getAccessToken } from './strava';
-import { isNoonHourLA, laDay } from './time';
+import { fetchEventDetail, getAccessToken, listEventIds } from './strava';
+import { isNoonHourLA } from './time';
 
 async function run(): Promise<void> {
   console.log(`[${new Date().toISOString()}] Strava → Slack ride-call run`);
@@ -15,39 +15,29 @@ async function run(): Promise<void> {
 
   const accessToken = await getAccessToken();
 
-  if (process.env.PROBE_EVENT_ID) {
-    const id = process.env.PROBE_EVENT_ID;
-    const r = await fetch(`https://www.strava.com/api/v3/group_events/${id}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    console.log(`[probe] GET /group_events/${id} → ${r.status}`);
-    console.log(`[probe] body: ${await r.text()}`);
-    return;
-  }
+  // 1. Enumerate every club event ID (read_all scope surfaces new-format events).
+  const ids = await withRetry(() => listEventIds(accessToken));
+  console.log(`Discovered ${ids.length} club events`);
 
-  const events = await withRetry(() => fetchUpcomingEvents(accessToken));
-  const withOccurrences = events.filter((e) => e.upcomingOccurrences.length > 0).length;
-  console.log(`Fetched ${events.length} club events (${withOccurrences} with upcoming occurrences)`);
-
-  if (process.env.DEBUG_OCCURRENCES) {
-    const now = new Date();
-    console.log(`[debug] nowISO=${now.toISOString()} todayLA=${laDay(now)} tomorrowLA=${laDay(new Date(now.getTime() + 86400000))}`);
-    const future = events
-      .flatMap((e) => e.upcomingOccurrences.map((iso) => ({ iso, title: e.title })))
-      .filter((o) => new Date(o.iso).getTime() >= now.getTime())
-      .sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime())
-      .slice(0, 20);
-    console.log(`[debug] ${future.length} future occurrence(s); soonest 20:`);
-    for (const o of future) {
-      console.log(`[debug-future] dayLA=${laDay(new Date(o.iso))} iso=${o.iso} title=${o.title}`);
+  // 2. Fetch each event's detail for its fresh next occurrence + women_only.
+  //    (The list endpoint's occurrences are stale for recurring events.)
+  const events = [];
+  for (const id of ids) {
+    try {
+      events.push(await withRetry(() => fetchEventDetail(accessToken, id)));
+    } catch (err) {
+      // One bad event shouldn't sink the whole run.
+      console.warn(`Skipping event ${id}: ${err instanceof Error ? err.message : err}`);
     }
   }
 
+  // 3. Keep events whose next occurrence is tomorrow (LA).
   const ridesTomorrow = events
     .map((event) => ({ event, occurrence: occurrenceTomorrowLA(event) }))
     .filter((r): r is { event: typeof r.event; occurrence: string } => r.occurrence !== null);
   console.log(`${ridesTomorrow.length} ride(s) happening tomorrow`);
 
+  // 4. Post each to the right channel(s).
   for (const { event, occurrence } of ridesTomorrow) {
     await withRetry(() => postToSlack(event, occurrence));
     await new Promise((r) => setTimeout(r, 500)); // gentle on Slack rate limits

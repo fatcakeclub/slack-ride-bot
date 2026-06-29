@@ -25,11 +25,7 @@ jobs:
           STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
           STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_CHANNEL: ${{ vars.SLACK_CHANNEL }}
+          SLACK_WEBHOOK_URL_FTWNB: ${{ secrets.SLACK_WEBHOOK_URL_FTWNB }}
           # On manual dispatch, bypass the noon guard so you can test any time:
           SKIP_NOON_GUARD: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
-          # Verbose occurrence logging on manual runs (diagnostics only):
-          DEBUG_OCCURRENCES: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
-          DEBUG_RAW: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
-          PROBE_EVENT_ID: ${{ vars.PROBE_EVENT_ID }}
         run: npm start
