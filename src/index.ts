@@ -21,9 +21,13 @@ async function run(): Promise<void> {
   let ridesTomorrow: { event: Awaited<ReturnType<typeof fetchEventDetail>>; occurrence: string }[];
   if (process.env.TEST_EVENT_ID) {
     const event = await fetchEventDetail(accessToken, process.env.TEST_EVENT_ID);
-    const occurrence =
-      event.upcomingOccurrences[0] ?? new Date(Date.now() + 86400000).toISOString();
-    console.log(`🧪 TEST_EVENT_ID set — previewing "${event.title}"`);
+    // Preview against tomorrow (at the event's usual time) so the forecast is in
+    // range — a real far-future occurrence would have no weather data.
+    const base = event.upcomingOccurrences[0] ? new Date(event.upcomingOccurrences[0]) : new Date();
+    const t = new Date(Date.now() + 86400000);
+    t.setUTCHours(base.getUTCHours(), base.getUTCMinutes(), 0, 0);
+    const occurrence = t.toISOString();
+    console.log(`🧪 TEST_EVENT_ID set — previewing "${event.title}" (date shifted to tomorrow)`);
     ridesTomorrow = [{ event, occurrence }];
   } else {
     // 1. Enumerate every club event ID (read_all scope surfaces new-format events).

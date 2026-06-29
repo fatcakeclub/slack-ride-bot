@@ -92,11 +92,12 @@ export function formatRideMessage(
     cells.push({ label: '📍 Meet', value: meet });
   }
 
-  // Trailing blank line under each field adds vertical spacing between the
-  // 2-up rows Slack renders for section fields.
-  const fields = cells.map((c) => ({
+  // Leading blank line on rows 2+ adds vertical spacing *between* the 2-up rows
+  // Slack renders \u2014 without a gap after the last row (i.e. above the
+  // description that follows).
+  const fields = cells.map((c, i) => ({
     type: 'mrkdwn' as const,
-    text: `*${c.label}*\n${c.value}\n\u00A0`,
+    text: `${i >= 2 ? '\u00A0\n' : ''}*${c.label}*\n${c.value}`,
   }));
 
   const blocks: NonNullable<IncomingWebhookSendArguments['blocks']> = [
@@ -106,13 +107,13 @@ export function formatRideMessage(
     },
   ];
 
-  // Rain warning for admins, surfaced prominently right under the title.
+  // Rain warning for ride leaders, surfaced prominently right under the title.
   if (forecast?.rainLikely) {
     blocks.push({
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: '\u26a0\ufe0f *Rain in the forecast* \ud83c\udf27\ufe0f\nAdmins \u2014 please reply in this thread to confirm whether this ride is still on.',
+        text: '\u26a0\ufe0f *Rain in the forecast* \ud83c\udf27\ufe0f\nRide leaders \u2014 please reply in this thread to confirm whether this ride is still on.',
       },
     });
   }
