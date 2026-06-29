@@ -4,6 +4,7 @@ import { withRetry } from './retry';
 import { postFailureNotice, postToSlack } from './slack';
 import { fetchEventDetail, getAccessToken, listEventIds } from './strava';
 import { isNoonHourLA } from './time';
+import { fetchForecast } from './weather';
 
 async function run(): Promise<void> {
   console.log(`[${new Date().toISOString()}] Strava → Slack ride-call run`);
@@ -37,9 +38,10 @@ async function run(): Promise<void> {
     .filter((r): r is { event: typeof r.event; occurrence: string } => r.occurrence !== null);
   console.log(`${ridesTomorrow.length} ride(s) happening tomorrow`);
 
-  // 4. Post each to the right channel(s).
+  // 4. Enrich with a forecast (best-effort) and post each to the right channel(s).
   for (const { event, occurrence } of ridesTomorrow) {
-    await withRetry(() => postToSlack(event, occurrence));
+    const forecast = await fetchForecast(event.lat, event.lng, occurrence);
+    await withRetry(() => postToSlack(event, occurrence, forecast));
     await new Promise((r) => setTimeout(r, 500)); // gentle on Slack rate limits
   }
 

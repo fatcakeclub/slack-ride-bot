@@ -3,18 +3,12 @@ import type { IncomingWebhookSendArguments } from '@slack/webhook';
 import { config } from './config';
 import { TZ } from './time';
 import type { GroupEvent } from './types';
+import type { Forecast } from './weather';
 
 const general = new IncomingWebhook(config.slack.webhookUrl); // #ride-calls-only
 const ftwnb = config.slack.ftwnbWebhookUrl
   ? new IncomingWebhook(config.slack.ftwnbWebhookUrl)
   : null; // #ftwnb
-
-const activityEmoji: Record<string, string> = {
-  Ride: '🚴',
-  GravelRide: '🚵',
-  MountainBikeRide: '⛰️',
-  VirtualRide: '🖥️',
-};
 
 /**
  * Which channels a ride call should post to. Women-only rides go to #ftwnb;
@@ -32,7 +26,8 @@ function destinationsFor(event: GroupEvent): { name: string; hook: IncomingWebho
 
 export function formatRideMessage(
   event: GroupEvent,
-  occurrenceIso: string
+  occurrenceIso: string,
+  forecast: Forecast | null
 ): IncomingWebhookSendArguments {
   const date = new Date(occurrenceIso);
 
@@ -49,7 +44,6 @@ export function formatRideMessage(
     timeZone: TZ,
   });
 
-  const emoji = activityEmoji[event.activityType] ?? '🚴';
   const stravaUrl = `https://www.strava.com/clubs/${config.strava.clubId}/group_events/${event.id}`;
 
   const shortDesc = event.description
@@ -58,35 +52,51 @@ export function formatRideMessage(
       : event.description
     : null;
 
+  // Meet location: hyperlink to the precise coordinates when we have them,
+  // otherwise fall back to whatever address text Strava gave.
+  let meet: string | null = null;
+  if (event.lat !== undefined && event.lng !== undefined) {
+    const maps = `https://www.google.com/maps/search/?api=1&query=${event.lat},${event.lng}`;
+    const label = event.address || 'Open in Google Maps';
+    meet = `<${maps}|${label}>`;
+  } else if (event.address) {
+    meet = event.address;
+  }
+
+  const fields: { type: 'mrkdwn'; text: string }[] = [
+    { type: 'mrkdwn', text: `*📅 Date*\n${dateStr}` },
+    { type: 'mrkdwn', text: `*⏰ Time*\n${timeStr}` },
+  ];
+  if (forecast) {
+    fields.push({
+      type: 'mrkdwn',
+      text: `*${forecast.emoji} Weather*\n${forecast.tempF}°F, ${forecast.description}, ${forecast.precipProb}% rain`,
+    });
+  }
+  if (meet) {
+    fields.push({ type: 'mrkdwn', text: `*📍 Meet*\n${meet}` });
+  }
+
   const blocks: NonNullable<IncomingWebhookSendArguments['blocks']> = [
     {
       type: 'header',
-      text: { type: 'plain_text', text: `${emoji} Tomorrow: ${event.title}`, emoji: true },
+      text: { type: 'plain_text', text: `🚴 Tomorrow: ${event.title}`, emoji: true },
     },
-    {
-      type: 'section',
-      fields: [
-        { type: 'mrkdwn', text: `*📅 Date*\n${dateStr}` },
-        { type: 'mrkdwn', text: `*⏰ Time*\n${timeStr}` },
-      ],
-    },
+    { type: 'section', fields },
   ];
-
-  if (event.address) {
-    blocks.push({
-      type: 'section',
-      fields: [
-        { type: 'mrkdwn', text: `*📍 Meet*\n${event.address}` },
-        { type: 'mrkdwn', text: `*🏃 Type*\n${event.activityType}` },
-      ],
-    });
-  }
 
   if (shortDesc) {
     blocks.push({ type: 'section', text: { type: 'mrkdwn', text: shortDesc } });
   }
 
-  blocks.push({ type: 'divider' });
+  if (event.routeMapUrl) {
+    blocks.push({
+      type: 'image',
+      image_url: event.routeMapUrl,
+      alt_text: event.routeName ? `Route: ${event.routeName}` : 'Route map',
+    });
+  }
+
   blocks.push({
     type: 'actions',
     elements: [
@@ -100,13 +110,17 @@ export function formatRideMessage(
   });
 
   return {
-    text: `${emoji} Ride call — ${event.title} tomorrow (${dateStr})`,
+    text: `🚴 Ride call — ${event.title} tomorrow (${dateStr})`,
     blocks,
   };
 }
 
-export async function postToSlack(event: GroupEvent, occurrenceIso: string): Promise<void> {
-  const payload = formatRideMessage(event, occurrenceIso);
+export async function postToSlack(
+  event: GroupEvent,
+  occurrenceIso: string,
+  forecast: Forecast | null
+): Promise<void> {
+  const payload = formatRideMessage(event, occurrenceIso, forecast);
   const targets = destinationsFor(event);
   for (const { hook } of targets) {
     await hook.send(payload);

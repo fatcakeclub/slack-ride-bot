@@ -10,12 +10,15 @@ export interface StravaGroupEventRaw {
   id: string;
   title: string;
   description?: string;
-  activity_type: string; // e.g. "Ride"
+  activity_type: string;
   upcoming_occurrences?: string[]; // ISO 8601 datetimes
   women_only?: boolean;
   address?: string;
-  lat?: number;
-  lng?: number;
+  start_latlng?: [number, number] | null; // [lat, lng] of the meeting spot
+  route?: {
+    name?: string;
+    map_urls?: { url?: string; light_url?: string; dark_url?: string };
+  } | null;
   club_id: number;
 }
 
@@ -24,12 +27,13 @@ export interface GroupEvent {
   id: string;
   title: string;
   description?: string;
-  activityType: string;
   upcomingOccurrences: string[]; // ISO 8601, soonest first
   womenOnly: boolean;
   address?: string;
-  lat?: number;
-  lng?: number;
+  lat?: number; // meeting-spot latitude
+  lng?: number; // meeting-spot longitude
+  routeName?: string;
+  routeMapUrl?: string; // static thumbnail of the route
 }
 
 /** Map Strava's raw wire format to our camelCase domain model. */
@@ -38,15 +42,18 @@ export function toGroupEvent(raw: StravaGroupEventRaw): GroupEvent {
     .filter((iso) => iso && !Number.isNaN(new Date(iso).getTime()))
     .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
 
+  const [lat, lng] = Array.isArray(raw.start_latlng) ? raw.start_latlng : [undefined, undefined];
+
   return {
     id: String(raw.id),
     title: (raw.title ?? '').trim(),
     description: raw.description,
-    activityType: raw.activity_type,
     upcomingOccurrences,
     womenOnly: Boolean(raw.women_only),
     address: raw.address,
-    lat: raw.lat,
-    lng: raw.lng,
+    lat,
+    lng,
+    routeName: raw.route?.name,
+    routeMapUrl: raw.route?.map_urls?.url,
   };
 }
