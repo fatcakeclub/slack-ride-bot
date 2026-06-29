@@ -72,10 +72,21 @@ export function formatRideMessage(
     { type: 'mrkdwn', text: `*⏰ Time*\n${timeStr}` },
   ];
   if (forecast) {
+    const temp =
+      forecast.tempMinF === forecast.tempMaxF
+        ? `${forecast.tempMaxF}°F`
+        : `${forecast.tempMinF}–${forecast.tempMaxF}°F`;
     fields.push({
       type: 'mrkdwn',
-      text: `*${forecast.emoji} Weather*\n${forecast.tempF}°F, ${forecast.description}, ${forecast.precipProb}% rain`,
+      text: `*${forecast.emoji} Weather*\n${temp}, ${forecast.description}, ${forecast.precipProb}% rain`,
     });
+    fields.push({
+      type: 'mrkdwn',
+      text: `*💨 Wind*\n${forecast.windMph} mph ${forecast.windDir}, gusts ${forecast.gustMph}`,
+    });
+    if (forecast.aqi !== undefined) {
+      fields.push({ type: 'mrkdwn', text: `*🫁 Air Quality*\nAQI ${forecast.aqi} — ${forecast.aqiCategory}` });
+    }
   }
   if (meet) {
     fields.push({ type: 'mrkdwn', text: `*📍 Meet*\n${meet}` });
@@ -106,7 +117,7 @@ export function formatRideMessage(
   // Request URL is configured. A link has none of that — and still opens Strava.
   blocks.push({
     type: 'section',
-    text: { type: 'mrkdwn', text: `🔗 *<${stravaUrl}|View this ride on Strava>*` },
+    text: { type: 'mrkdwn', text: `🔗 *<${stravaUrl}|Route & RSVP on Strava>*` },
   });
 
   return {

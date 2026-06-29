@@ -40,7 +40,7 @@ async function run(): Promise<void> {
 
   // 4. Enrich with a forecast (best-effort) and post each to the right channel(s).
   for (const { event, occurrence } of ridesTomorrow) {
-    const forecast = await fetchForecast(event.lat, event.lng, occurrence);
+    const forecast = await fetchForecast(event.lat, event.lng, event.routePolyline, occurrence);
     await withRetry(() => postToSlack(event, occurrence, forecast));
     await new Promise((r) => setTimeout(r, 500)); // gentle on Slack rate limits
   }

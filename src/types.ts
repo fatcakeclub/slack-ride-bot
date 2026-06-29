@@ -19,6 +19,7 @@ export interface StravaGroupEventRaw {
   start_latlng?: [number, number] | null; // [lat, lng] of the meeting spot
   route?: {
     name?: string;
+    map?: { summary_polyline?: string };
     map_urls?: { url?: string; light_url?: string; dark_url?: string };
   } | null;
   club_id: number;
@@ -36,6 +37,7 @@ export interface GroupEvent {
   lng?: number; // meeting-spot longitude
   routeName?: string;
   routeMapUrl?: string; // static thumbnail of the route
+  routePolyline?: string; // encoded polyline, for sampling weather along the route
 }
 
 /** Map Strava's raw wire format to our camelCase domain model. */
@@ -57,5 +59,6 @@ export function toGroupEvent(raw: StravaGroupEventRaw): GroupEvent {
     lng,
     routeName: raw.route?.name,
     routeMapUrl: raw.route?.map_urls?.url,
+    routePolyline: raw.route?.map?.summary_polyline,
   };
 }
