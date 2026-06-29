@@ -22,6 +22,4 @@ export const config = {
     // here instead of the real channels, annotated with the intended target.
     testWebhookUrl: process.env.SLACK_WEBHOOK_URL_TEST || undefined,
   },
-  /** Bypass the noon-hour guard for dev / manual runs. */
-  skipNoonGuard: Boolean(process.env.SKIP_NOON_GUARD),
 };

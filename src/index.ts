@@ -3,16 +3,10 @@ import { occurrenceTomorrowLA } from './filter';
 import { withRetry } from './retry';
 import { postFailureNotice, postToSlack } from './slack';
 import { fetchEventDetail, getAccessToken, listEventIds } from './strava';
-import { isNoonHourLA } from './time';
 import { fetchForecast } from './weather';
 
 async function run(): Promise<void> {
   console.log(`[${new Date().toISOString()}] Strava → Slack ride-call run`);
-
-  if (!config.skipNoonGuard && !isNoonHourLA()) {
-    console.log('Not the noon hour in LA — skipping this trigger.');
-    return;
-  }
 
   const accessToken = await getAccessToken();
 

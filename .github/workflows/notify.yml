@@ -2,17 +2,21 @@ name: Strava Ride Call Notifications
 
 on:
   schedule:
-    # Daily, at both candidate "noon PT" hours. The script's noon-hour guard
-    # ensures exactly one run proceeds year-round (DST-safe).
-    - cron: '0 19 * * *'   # noon PDT (summer)
-    - cron: '0 20 * * *'   # noon PST (winter)
-  workflow_dispatch:        # Manual test runs (redirect to the test DM)
+    # Once daily, ~noon PT. Single off-peak cron (off-the-hour schedules are
+    # dispatched more promptly, and one line means no double-post risk).
+    # UTC is fixed, so this lands at 12:30 PDT (summer) / 11:30 AM PST (winter).
+    - cron: '30 19 * * *'
+  workflow_dispatch:        # Manual runs (redirect to the test DM by default)
     inputs:
       test_event_id:
         description: 'Preview a specific event ID (bypasses the tomorrow filter)'
         required: false
       force_rain:
         description: 'Force the rain warning on (preview)'
+        type: boolean
+        default: false
+      post_for_real:
+        description: 'Post to the real channels instead of the test DM'
         type: boolean
         default: false
 
@@ -36,11 +40,9 @@ jobs:
           GH_SECRETS_PAT: ${{ secrets.GH_SECRETS_PAT }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_URL_FTWNB: ${{ secrets.SLACK_WEBHOOK_URL_FTWNB }}
-          # Manual runs redirect to the test DM (never the real channels);
-          # scheduled runs post for real. Both lines below are gated on the
-          # event being a manual dispatch.
-          SLACK_WEBHOOK_URL_TEST: ${{ github.event_name == 'workflow_dispatch' && secrets.SLACK_WEBHOOK_URL_TEST || '' }}
-          SKIP_NOON_GUARD: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+          # Manual runs redirect to the test DM unless post_for_real is set;
+          # scheduled runs always post for real.
+          SLACK_WEBHOOK_URL_TEST: ${{ (github.event_name == 'workflow_dispatch' && !inputs.post_for_real) && secrets.SLACK_WEBHOOK_URL_TEST || '' }}
           TEST_EVENT_ID: ${{ inputs.test_event_id }}
           TEST_FORCE_RAIN: ${{ inputs.force_rain && '1' || '' }}
         run: npm start
