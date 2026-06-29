@@ -101,16 +101,12 @@ export function formatRideMessage(
     });
   }
 
+  // A markdown link, not an actions/button block. Buttons are interactive
+  // components: Slack POSTs a payload on click and warns when no Interactivity
+  // Request URL is configured. A link has none of that — and still opens Strava.
   blocks.push({
-    type: 'actions',
-    elements: [
-      {
-        type: 'button',
-        text: { type: 'plain_text', text: 'View on Strava', emoji: true },
-        url: stravaUrl,
-        style: 'primary',
-      },
-    ],
+    type: 'section',
+    text: { type: 'mrkdwn', text: `🔗 *<${stravaUrl}|View this ride on Strava>*` },
   });
 
   return {
