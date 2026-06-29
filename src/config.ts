@@ -18,6 +18,9 @@ export const config = {
     // Optional second webhook bound to #ftwnb. Women-only rides route here.
     // If unset, women-only rides fall back to the general channel.
     ftwnbWebhookUrl: process.env.SLACK_WEBHOOK_URL_FTWNB || undefined,
+    // Optional test webhook (e.g. a DM). When set, ALL messages are redirected
+    // here instead of the real channels, annotated with the intended target.
+    testWebhookUrl: process.env.SLACK_WEBHOOK_URL_TEST || undefined,
   },
   /** Bypass the noon-hour guard for dev / manual runs. */
   skipNoonGuard: Boolean(process.env.SKIP_NOON_GUARD),

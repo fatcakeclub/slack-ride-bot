@@ -26,6 +26,9 @@ jobs:
           STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_URL_FTWNB: ${{ secrets.SLACK_WEBHOOK_URL_FTWNB }}
-          # On manual dispatch, bypass the noon guard so you can test any time:
+          # Manual runs redirect to the test DM (never the real channels);
+          # scheduled runs post for real. Both lines below are gated on the
+          # event being a manual dispatch.
+          SLACK_WEBHOOK_URL_TEST: ${{ github.event_name == 'workflow_dispatch' && secrets.SLACK_WEBHOOK_URL_TEST || '' }}
           SKIP_NOON_GUARD: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
         run: npm start

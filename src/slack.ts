@@ -9,6 +9,9 @@ const general = new IncomingWebhook(config.slack.webhookUrl); // #ride-calls-onl
 const ftwnb = config.slack.ftwnbWebhookUrl
   ? new IncomingWebhook(config.slack.ftwnbWebhookUrl)
   : null; // #ftwnb
+const testHook = config.slack.testWebhookUrl
+  ? new IncomingWebhook(config.slack.testWebhookUrl)
+  : null;
 
 /**
  * Which channels a ride call should post to. Women-only rides go to #ftwnb;
@@ -122,10 +125,26 @@ export async function postToSlack(
 ): Promise<void> {
   const payload = formatRideMessage(event, occurrenceIso, forecast);
   const targets = destinationsFor(event);
+  const targetNames = targets.map((t) => t.name).join(', ');
+
+  // Test mode: redirect everything to the test webhook (a DM), annotated with
+  // the channel(s) it would have posted to in production.
+  if (testHook) {
+    await testHook.send({
+      ...payload,
+      blocks: [
+        { type: 'context', elements: [{ type: 'mrkdwn', text: `🧪 *TEST* — would post to *${targetNames}*` }] },
+        ...(payload.blocks ?? []),
+      ],
+    });
+    console.log(`🧪 Test-posted "${event.title}" (intended: ${targetNames})`);
+    return;
+  }
+
   for (const { hook } of targets) {
     await hook.send(payload);
   }
-  console.log(`✅ Posted "${event.title}" → ${targets.map((t) => t.name).join(', ')}`);
+  console.log(`✅ Posted "${event.title}" → ${targetNames}`);
 }
 
 /** Operational failure notice — always goes to the general channel only. */
