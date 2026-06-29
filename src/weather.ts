@@ -23,7 +23,7 @@ function describe(code: number): { description: string; emoji: string } {
   if (code === 0) return { description: 'clear', emoji: '☀️' };
   if (code <= 2) return { description: 'partly cloudy', emoji: '🌤️' };
   if (code === 3) return { description: 'overcast', emoji: '☁️' };
-  if (code <= 48) return { description: 'foggy', emoji: '🌫️' };
+  if (code <= 48) return { description: 'foggy', emoji: '🌁' };
   if (code <= 57) return { description: 'drizzle', emoji: '🌦️' };
   if (code <= 67) return { description: 'rain', emoji: '🌧️' };
   if (code <= 77) return { description: 'snow', emoji: '❄️' };

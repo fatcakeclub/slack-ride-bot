@@ -67,30 +67,38 @@ export function formatRideMessage(
     meet = mrkdwnEscape(event.address);
   }
 
-  const fields: { type: 'mrkdwn'; text: string }[] = [
-    { type: 'mrkdwn', text: `*📅 Date*\n${dateStr}` },
-    { type: 'mrkdwn', text: `*⏰ Time*\n${timeStr}` },
+  const cells: { label: string; value: string }[] = [
+    { label: '📅 Date', value: dateStr },
+    { label: '⏰ Time', value: timeStr },
   ];
   if (forecast) {
     const temp =
       forecast.tempMinF === forecast.tempMaxF
         ? `${forecast.tempMaxF}°F`
         : `${forecast.tempMinF}–${forecast.tempMaxF}°F`;
-    fields.push({
-      type: 'mrkdwn',
-      text: `*${forecast.emoji} Weather*\n${temp}, ${forecast.description}, ${forecast.precipProb}% rain`,
+    cells.push({
+      label: `${forecast.emoji} Weather`,
+      value: `${temp}, ${forecast.description}, ${forecast.precipProb}% rain`,
     });
-    fields.push({
-      type: 'mrkdwn',
-      text: `*💨 Wind*\n${forecast.windMph} mph ${forecast.windDir}, gusts ${forecast.gustMph}`,
+    cells.push({
+      label: '💨 Wind',
+      value: `${forecast.windMph} mph ${forecast.windDir}, gusts ${forecast.gustMph}`,
     });
     if (forecast.aqi !== undefined) {
-      fields.push({ type: 'mrkdwn', text: `*🫁 Air Quality*\nAQI ${forecast.aqi} — ${forecast.aqiCategory}` });
+      cells.push({ label: '🫁 Air Quality', value: `AQI ${forecast.aqi} — ${forecast.aqiCategory}` });
     }
   }
   if (meet) {
-    fields.push({ type: 'mrkdwn', text: `*📍 Meet*\n${meet}` });
+    cells.push({ label: '📍 Meet', value: meet });
   }
+
+  // Slack renders section fields 2-up with a fixed gutter; indent the
+  // right-hand column with em-spaces to open up horizontal spacing.
+  const GUTTER = '  ';
+  const fields = cells.map((c, i) => {
+    const pad = i % 2 === 1 ? GUTTER : '';
+    return { type: 'mrkdwn' as const, text: `${pad}*${c.label}*\n${pad}${c.value}` };
+  });
 
   const blocks: NonNullable<IncomingWebhookSendArguments['blocks']> = [
     {
