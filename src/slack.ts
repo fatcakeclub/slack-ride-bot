@@ -92,21 +92,32 @@ export function formatRideMessage(
     cells.push({ label: '📍 Meet', value: meet });
   }
 
-  // Slack renders section fields 2-up with a fixed gutter; indent the
-  // right-hand column with em-spaces to open up horizontal spacing.
-  const GUTTER = '  ';
-  const fields = cells.map((c, i) => {
-    const pad = i % 2 === 1 ? GUTTER : '';
-    return { type: 'mrkdwn' as const, text: `${pad}*${c.label}*\n${pad}${c.value}` };
-  });
+  // Trailing blank line under each field adds vertical spacing between the
+  // 2-up rows Slack renders for section fields.
+  const fields = cells.map((c) => ({
+    type: 'mrkdwn' as const,
+    text: `*${c.label}*\n${c.value}\n\u00A0`,
+  }));
 
   const blocks: NonNullable<IncomingWebhookSendArguments['blocks']> = [
     {
       type: 'header',
-      text: { type: 'plain_text', text: `🚴 Tomorrow: ${event.title}`, emoji: true },
+      text: { type: 'plain_text', text: `\ud83d\udeb4 Tomorrow: ${event.title}`, emoji: true },
     },
-    { type: 'section', fields },
   ];
+
+  // Rain warning for admins, surfaced prominently right under the title.
+  if (forecast?.rainLikely) {
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '\u26a0\ufe0f *Rain in the forecast* \ud83c\udf27\ufe0f\nAdmins \u2014 please reply in this thread to confirm whether this ride is still on.',
+      },
+    });
+  }
+
+  blocks.push({ type: 'section', fields });
 
   if (shortDesc) {
     blocks.push({ type: 'section', text: { type: 'mrkdwn', text: mrkdwnEscape(shortDesc) } });

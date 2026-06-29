@@ -11,6 +11,7 @@ export interface Forecast {
   windDir: string; // compass direction the wind blows from, at the windiest point
   aqi?: number; // US AQI, max across points
   aqiCategory?: string;
+  rainLikely: boolean; // any sampled point shows wet conditions / high rain odds
 }
 
 interface Point {
@@ -185,6 +186,9 @@ export async function fetchForecast(
     if (temps.length === 0) return null;
 
     const { description, emoji } = describe(Math.max(...codes));
+    const rainLikely =
+      codes.some((c) => (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95) ||
+      Math.max(...precips) >= 20; // precipitation_probability is a percentage
 
     const aqis = await fetchAqiByPoint(points, key).catch(() => []);
     const aqi = aqis.length ? Math.round(Math.max(...aqis)) : undefined;
@@ -200,6 +204,7 @@ export async function fetchForecast(
       windDir: compass(windDeg),
       aqi,
       aqiCategory: aqi !== undefined ? aqiCategory(aqi) : undefined,
+      rainLikely,
     };
   } catch {
     return null;

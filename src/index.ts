@@ -16,31 +16,43 @@ async function run(): Promise<void> {
 
   const accessToken = await getAccessToken();
 
-  // 1. Enumerate every club event ID (read_all scope surfaces new-format events).
-  const ids = await withRetry(() => listEventIds(accessToken));
-  console.log(`Discovered ${ids.length} club events`);
+  // Test override: post one specific event regardless of date, for previewing
+  // formatting. Uses the event's soonest upcoming occurrence (else "tomorrow").
+  let ridesTomorrow: { event: Awaited<ReturnType<typeof fetchEventDetail>>; occurrence: string }[];
+  if (process.env.TEST_EVENT_ID) {
+    const event = await fetchEventDetail(accessToken, process.env.TEST_EVENT_ID);
+    const occurrence =
+      event.upcomingOccurrences[0] ?? new Date(Date.now() + 86400000).toISOString();
+    console.log(`🧪 TEST_EVENT_ID set — previewing "${event.title}"`);
+    ridesTomorrow = [{ event, occurrence }];
+  } else {
+    // 1. Enumerate every club event ID (read_all scope surfaces new-format events).
+    const ids = await withRetry(() => listEventIds(accessToken));
+    console.log(`Discovered ${ids.length} club events`);
 
-  // 2. Fetch each event's detail for its fresh next occurrence + women_only.
-  //    (The list endpoint's occurrences are stale for recurring events.)
-  const events = [];
-  for (const id of ids) {
-    try {
-      events.push(await withRetry(() => fetchEventDetail(accessToken, id)));
-    } catch (err) {
-      // One bad event shouldn't sink the whole run.
-      console.warn(`Skipping event ${id}: ${err instanceof Error ? err.message : err}`);
+    // 2. Fetch each event's detail for its fresh next occurrence + women_only.
+    //    (The list endpoint's occurrences are stale for recurring events.)
+    const events = [];
+    for (const id of ids) {
+      try {
+        events.push(await withRetry(() => fetchEventDetail(accessToken, id)));
+      } catch (err) {
+        // One bad event shouldn't sink the whole run.
+        console.warn(`Skipping event ${id}: ${err instanceof Error ? err.message : err}`);
+      }
     }
-  }
 
-  // 3. Keep events whose next occurrence is tomorrow (LA).
-  const ridesTomorrow = events
-    .map((event) => ({ event, occurrence: occurrenceTomorrowLA(event) }))
-    .filter((r): r is { event: typeof r.event; occurrence: string } => r.occurrence !== null);
-  console.log(`${ridesTomorrow.length} ride(s) happening tomorrow`);
+    // 3. Keep events whose next occurrence is tomorrow (LA).
+    ridesTomorrow = events
+      .map((event) => ({ event, occurrence: occurrenceTomorrowLA(event) }))
+      .filter((r): r is { event: typeof r.event; occurrence: string } => r.occurrence !== null);
+    console.log(`${ridesTomorrow.length} ride(s) happening tomorrow`);
+  }
 
   // 4. Enrich with a forecast (best-effort) and post each to the right channel(s).
   for (const { event, occurrence } of ridesTomorrow) {
     const forecast = await fetchForecast(event.lat, event.lng, event.routePolyline, occurrence);
+    if (forecast && process.env.TEST_FORCE_RAIN) forecast.rainLikely = true; // preview the warning
     await withRetry(() => postToSlack(event, occurrence, forecast));
     await new Promise((r) => setTimeout(r, 500)); // gentle on Slack rate limits
   }
