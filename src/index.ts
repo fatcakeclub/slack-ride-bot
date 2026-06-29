@@ -14,6 +14,17 @@ async function run(): Promise<void> {
   }
 
   const accessToken = await getAccessToken();
+
+  if (process.env.PROBE_EVENT_ID) {
+    const id = process.env.PROBE_EVENT_ID;
+    const r = await fetch(`https://www.strava.com/api/v3/group_events/${id}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    console.log(`[probe] GET /group_events/${id} → ${r.status}`);
+    console.log(`[probe] body: ${await r.text()}`);
+    return;
+  }
+
   const events = await withRetry(() => fetchUpcomingEvents(accessToken));
   const withOccurrences = events.filter((e) => e.upcomingOccurrences.length > 0).length;
   console.log(`Fetched ${events.length} club events (${withOccurrences} with upcoming occurrences)`);

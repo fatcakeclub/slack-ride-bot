@@ -31,4 +31,5 @@ jobs:
           # Verbose occurrence logging on manual runs (diagnostics only):
           DEBUG_OCCURRENCES: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
           DEBUG_RAW: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+          PROBE_EVENT_ID: ${{ vars.PROBE_EVENT_ID }}
         run: npm start
