@@ -1,3 +1,4 @@
+import sodium from 'libsodium-wrappers';
 import { config } from './config';
 import { toGroupEvent } from './types';
 import type { GroupEvent, StravaGroupEventRaw } from './types';
@@ -12,18 +13,57 @@ function parseStravaJson<T>(text: string): T {
 }
 
 /**
- * Persist a rotated refresh token. Strava may issue a new refresh token on each
- * exchange; if it is not written back, the job breaks after the first rotation.
+ * Persist a rotated refresh token back to the GitHub Actions secret so the next
+ * run keeps working. Strava may issue a new refresh token on a token exchange;
+ * if it is not written back, the stored secret goes stale and the job fails.
  *
- * TODO: write the new token back to the GitHub Actions secret via the GitHub
- * REST API (PAT with `secrets` write scope). Until then this only warns.
+ * Needs GH_SECRETS_PAT (a PAT with Secrets: read/write on this repo). Never
+ * throws — a failure here must not break the current run, which already has a
+ * valid access token; it logs loudly instead.
  */
 async function persistRefreshToken(newToken: string): Promise<void> {
-  console.warn(
-    'Strava issued a new refresh token. Update the STRAVA_REFRESH_TOKEN secret ' +
-      'or the next run will fail. (persistRefreshToken is not yet wired up.)'
-  );
-  void newToken;
+  const pat = process.env.GH_SECRETS_PAT;
+  const repo = process.env.GITHUB_REPOSITORY; // "owner/repo", set by Actions
+  if (!pat || !repo) {
+    console.warn(
+      '⚠️ Strava rotated the refresh token but GH_SECRETS_PAT/GITHUB_REPOSITORY ' +
+        'are unset — cannot persist. Update STRAVA_REFRESH_TOKEN manually or the ' +
+        'next run will fail.'
+    );
+    return;
+  }
+  try {
+    const base = `https://api.github.com/repos/${repo}/actions/secrets`;
+    const headers = {
+      Authorization: `Bearer ${pat}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    };
+
+    const keyRes = await fetch(`${base}/public-key`, { headers });
+    if (!keyRes.ok) throw new Error(`public-key ${keyRes.status} ${await keyRes.text()}`);
+    const { key, key_id } = (await keyRes.json()) as { key: string; key_id: string };
+
+    await sodium.ready;
+    const encrypted = sodium.crypto_box_seal(
+      sodium.from_string(newToken),
+      sodium.from_base64(key, sodium.base64_variants.ORIGINAL)
+    );
+    const encrypted_value = sodium.to_base64(encrypted, sodium.base64_variants.ORIGINAL);
+
+    const putRes = await fetch(`${base}/STRAVA_REFRESH_TOKEN`, {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ encrypted_value, key_id }),
+    });
+    if (!putRes.ok) throw new Error(`PUT secret ${putRes.status} ${await putRes.text()}`);
+    console.log('🔁 Persisted rotated STRAVA_REFRESH_TOKEN to GitHub secret.');
+  } catch (err) {
+    console.error(
+      '⚠️ Failed to persist rotated refresh token — update STRAVA_REFRESH_TOKEN ' +
+        `manually before the next run. ${err instanceof Error ? err.message : err}`
+    );
+  }
 }
 
 export async function getAccessToken(): Promise<string> {

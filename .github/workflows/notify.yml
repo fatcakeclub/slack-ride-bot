@@ -24,6 +24,8 @@ jobs:
           STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
           STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
           STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
+          # Lets the job write a rotated refresh token back to the secret store.
+          GH_SECRETS_PAT: ${{ secrets.GH_SECRETS_PAT }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_URL_FTWNB: ${{ secrets.SLACK_WEBHOOK_URL_FTWNB }}
           # Manual runs redirect to the test DM (never the real channels);

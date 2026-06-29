@@ -9,9 +9,11 @@
     "dev": "ts-node src/index.ts"
   },
   "dependencies": {
-    "@slack/webhook": "^7.0.2"
+    "@slack/webhook": "^7.0.2",
+    "libsodium-wrappers": "^0.7.16"
   },
   "devDependencies": {
+    "@types/libsodium-wrappers": "^0.7.14",
     "@types/node": "^20.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.0"
