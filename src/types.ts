@@ -1,3 +1,5 @@
+import { decodeEntities } from './text';
+
 /**
  * Raw shape returned by Strava's group-event endpoints. Snake_case because it
  * is the wire format — do not use this outside strava.ts.
@@ -46,8 +48,8 @@ export function toGroupEvent(raw: StravaGroupEventRaw): GroupEvent {
 
   return {
     id: String(raw.id),
-    title: (raw.title ?? '').trim(),
-    description: raw.description,
+    title: decodeEntities((raw.title ?? '').trim()),
+    description: raw.description ? decodeEntities(raw.description) : undefined,
     upcomingOccurrences,
     womenOnly: Boolean(raw.women_only),
     address: raw.address,

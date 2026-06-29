@@ -1,6 +1,7 @@
 import { IncomingWebhook } from '@slack/webhook';
 import type { IncomingWebhookSendArguments } from '@slack/webhook';
 import { config } from './config';
+import { mrkdwnEscape } from './text';
 import { TZ } from './time';
 import type { GroupEvent } from './types';
 import type { Forecast } from './weather';
@@ -60,10 +61,10 @@ export function formatRideMessage(
   let meet: string | null = null;
   if (event.lat !== undefined && event.lng !== undefined) {
     const maps = `https://www.google.com/maps/search/?api=1&query=${event.lat},${event.lng}`;
-    const label = event.address || 'Open in Google Maps';
+    const label = mrkdwnEscape(event.address || 'Open in Google Maps');
     meet = `<${maps}|${label}>`;
   } else if (event.address) {
-    meet = event.address;
+    meet = mrkdwnEscape(event.address);
   }
 
   const fields: { type: 'mrkdwn'; text: string }[] = [
@@ -89,7 +90,7 @@ export function formatRideMessage(
   ];
 
   if (shortDesc) {
-    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: shortDesc } });
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: mrkdwnEscape(shortDesc) } });
   }
 
   if (event.routeMapUrl) {
